@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f1115">
+  <title>DistriPOS — Branch Inventory Engine v2.0</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="DistriPOS dashboard">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-copy"><strong>DistriPOS <span>v2.0</span></strong><small>Branch Inventory Engine</small></span>
+      </a>
+      <div class="header-nodes" aria-label="Status koneksi node">
+        <div class="connection-pill unknown" id="connection-1"><i></i><span>N1</span><b>—</b></div>
+        <div class="connection-pill unknown" id="connection-2"><i></i><span>N2</span><b>—</b></div>
+        <div class="connection-pill unknown" id="connection-3"><i></i><span>N3</span><b>—</b></div>
+        <div class="connection-pill unknown" id="connection-4"><i></i><span>N4</span><b>—</b></div>
+      </div>
+      <div class="header-actions">
+        <button class="button button-secondary" id="seed-button" type="button"><span aria-hidden="true">↻</span> Seed Data</button>
+        <button class="button button-primary" id="mpi-button" type="button"><span aria-hidden="true">∑</span> Audit MPI</button>
+      </div>
+    </header>
+
+    <main class="main-grid">
+      <aside class="workspace-panel left-panel" aria-label="Operasional">
+        <div class="section-heading"><div><span class="eyebrow">OPERASIONAL</span><h2>Workspace</h2></div><span class="panel-kicker">INVENTORY</span></div>
+        <nav class="tab-list" role="tablist" aria-label="Panel operasional">
+          <button class="tab-button active" id="op-tab-inventory" role="tab" aria-selected="true" aria-controls="op-panel-inventory" data-tab-group="operations" data-tab="inventory">Kasir &amp; Stok</button>
+          <button class="tab-button" id="op-tab-transfer" role="tab" aria-selected="false" aria-controls="op-panel-transfer" data-tab-group="operations" data-tab="transfer">Transfer</button>
+          <button class="tab-button" id="op-tab-dht" role="tab" aria-selected="false" aria-controls="op-panel-dht" data-tab-group="operations" data-tab="dht">Cari DHT</button>
+        </nav>
+
+        <section class="tab-panel active" id="op-panel-inventory" role="tabpanel" aria-labelledby="op-tab-inventory" data-panel-group="operations" data-panel="inventory">
+          <label class="field-label" for="inventory-node">Node tujuan</label>
+          <select id="inventory-node" class="control"><option value="1">Node 1 · Pusat</option><option value="2" selected>Node 2 · Cabang A</option><option value="3">Node 3 · Cabang B</option><option value="4">Node 4 · Replika</option></select>
+          <div class="subtabs" role="tablist" aria-label="Mode kasir dan pengelolaan SKU">
+            <button class="subtab active" id="sku-tab-sale" role="tab" aria-selected="true" aria-controls="sku-panel-sale" data-tab-group="sku-mode" data-tab="sale">Transaksi stok</button>
+            <button class="subtab" id="sku-tab-manage" role="tab" aria-selected="false" aria-controls="sku-panel-manage" data-tab-group="sku-mode" data-tab="manage">Kelola SKU</button>
+          </div>
+
+          <section class="subpanel active" id="sku-panel-sale" role="tabpanel" aria-labelledby="sku-tab-sale" data-panel-group="sku-mode" data-panel="sale">
+            <form id="inventory-form" class="form-stack">
+              <label class="field-label" for="inventory-code">Pilih atau ketik SKU</label>
+              <input id="inventory-code" class="control" name="kode" list="inventory-sku-options" value="BRG001" required maxlength="80" placeholder="Contoh: BRG001" autocomplete="off">
+              <datalist id="inventory-sku-options"></datalist>
+              <div class="quick-quantity" aria-label="Jumlah cepat">
+                <button type="button" class="chip-button quantity-preset" data-quantity="-1">−1</button>
+                <button type="button" class="chip-button quantity-preset" data-quantity="-5">−5</button>
+                <button type="button" class="chip-button quantity-preset" data-quantity="10">+10</button>
+                <span class="preset-caption">pilih cepat</span>
+              </div>
+              <label class="field-label" for="inventory-quantity">Jumlah perubahan stok</label>
+              <input id="inventory-quantity" class="control quantity-input" name="jumlah" type="number" step="1" required placeholder="Misalnya 5 atau -1">
+              <p class="field-hint">Nilai negatif mengurangi stok; nilai positif menambah stok.</p>
+              <div class="button-row">
+                <button class="button button-danger grow" id="sell-button" type="button">Jual <span>(−)</span></button>
+                <button class="button button-success grow" id="restock-button" type="button">Restock <span>(+)</span></button>
+              </div>
+            </form>
+          </section>
+
+          <section class="subpanel" id="sku-panel-manage" role="tabpanel" aria-labelledby="sku-tab-manage" data-panel-group="sku-mode" data-panel="manage" hidden>
+            <form id="manage-sku-form" class="form-stack">
+              <label class="field-label" for="manage-code">Kode SKU</label>
+              <input id="manage-code" class="control" required maxlength="80" placeholder="Contoh: SKU-NEW">
+              <label class="field-label" for="inventory-name">Nama barang</label>
+              <input id="inventory-name" class="control" placeholder="Nama barang">
+              <div class="form-grid two">
+                <label class="field-label">Harga<input id="inventory-price" class="control" type="number" min="0" step="1" placeholder="50000"></label>
+                <label class="field-label">Min. stok<input id="inventory-min" class="control" type="number" min="0" step="1" placeholder="15"></label>
+              </div>
+              <label class="field-label" for="manage-initial-stock">Stok awal</label>
+              <input id="manage-initial-stock" class="control" type="number" step="1" value="0">
+              <button class="button button-primary full-width" id="add-sku-button" type="submit">＋ Tambah SKU Baru</button>
+              <div class="divider-label"><span>ATAU HAPUS SKU</span></div>
+              <label class="field-label" for="delete-code">Kode SKU yang akan dihapus</label>
+              <input id="delete-code" class="control" placeholder="Masukkan kode SKU">
+              <button class="button button-danger-outline full-width" id="delete-sku-button" type="button">Hapus SKU</button>
+            </form>
+          </section>
+        </section>
+
+        <section class="tab-panel" id="op-panel-transfer" role="tabpanel" aria-labelledby="op-tab-transfer" data-panel-group="operations" data-panel="transfer" hidden>
+          <div class="panel-intro"><span class="icon-badge purple">⇄</span><div><h3>Mutasi antar cabang</h3><p>Transfer dengan distributed lock dan auto-rollback.</p></div></div>
+          <form id="transfer-form" class="form-stack">
+            <div class="form-grid two">
+              <label class="field-label">Asal<select id="transfer-source" class="control"><option value="2">Node 2 · Cabang A</option><option value="3">Node 3 · Cabang B</option></select></label>
+              <label class="field-label">Tujuan<select id="transfer-target" class="control"><option value="3">Node 3 · Cabang B</option><option value="2">Node 2 · Cabang A</option></select></label>
+            </div>
+            <label class="field-label" for="transfer-code">Kode SKU<input id="transfer-code" class="control" required value="BRG001" placeholder="BRG001"></label>
+            <label class="field-label" for="transfer-quantity">Jumlah transfer<input id="transfer-quantity" class="control" required type="number" min="1" step="1" placeholder="10"></label>
+            <label class="switch-row" for="simulate-failure"><span class="switch-copy"><b>Simulasi Gagal / Rollback</b><small>Paksa timeout di cabang tujuan</small></span><input id="simulate-failure" type="checkbox"><span class="switch-track" aria-hidden="true"></span></label>
+            <div class="callout"><span>i</span><span>Demo Distributed Lock Lease 10 detik dan kompensasi stok otomatis.</span></div>
+            <button class="button button-primary full-width" type="submit">Jalankan Transfer <span aria-hidden="true">→</span></button>
+          </form>
+        </section>
+
+        <section class="tab-panel" id="op-panel-dht" role="tabpanel" aria-labelledby="op-tab-dht" data-panel-group="operations" data-panel="dht" hidden>
+          <div class="panel-intro"><span class="icon-badge green">⌕</span><div><h3>Chord DHT Lookup</h3><p>Lacak rute pencarian SKU pada overlay terdistribusi.</p></div></div>
+          <form id="dht-form" class="form-stack">
+            <label class="field-label" for="dht-code">Kode SKU<input id="dht-code" class="control" required value="BRG001" placeholder="Masukkan SKU"></label>
+            <button class="button button-primary full-width" type="submit">Cari rute <span aria-hidden="true">→</span></button>
+          </form>
+          <div id="dht-result" class="dht-result hidden" aria-live="polite"><div class="result-label">HASIL ROUTING</div><div class="result-content">Belum ada pencarian.</div></div>
+        </section>
+      </aside>
+
+      <section class="topology-column" aria-label="Topologi klaster">
+        <div class="topology-heading"><div><span class="eyebrow">CLUSTER OVERVIEW</span><h2>Topologi jaringan</h2></div><div class="topology-live"><i></i><span>LIVE</span><small id="last-updated">Menunggu data</small></div></div>
+        <div class="topology-legend" aria-label="Legenda protokol"><span><i class="legend-dot xml"></i>XML-RPC</span><span><i class="legend-dot rmi"></i>Pyro5-RMI</span><span><i class="legend-dot failover"></i>Failover</span><span><i class="legend-dot compute"></i>Chord / MPI</span></div>
+        <div class="topology-canvas" id="topology-canvas">
+          <svg class="topology-svg" id="topology-svg" viewBox="0 0 900 700" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagram komunikasi antar empat node">
+            <defs>
+              <filter id="beam-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur><feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+              <filter id="soft-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.5" result="blur"></feGaussianBlur><feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+            </defs>
+            <g class="connection-lines">
+              <path class="link-path" data-pair="1-2" d="M450 160 Q300 210 220 300"></path>
+              <path class="link-path" data-pair="1-3" d="M450 160 Q600 210 680 300"></path>
+              <path class="link-path" data-pair="1-4" d="M450 160 L450 540"></path>
+              <path class="link-path" data-pair="2-3" d="M220 355 Q450 430 680 355"></path>
+              <path class="link-path" data-pair="2-4" d="M220 355 Q285 475 450 540"></path>
+              <path class="link-path" data-pair="3-4" d="M680 355 Q615 475 450 540"></path>
+            </g>
+            <g class="beam-layer" id="beam-layer"></g>
+            <g class="node-anchor"><circle cx="450" cy="160" r="4"></circle><circle cx="220" cy="335" r="4"></circle><circle cx="680" cy="335" r="4"></circle><circle cx="450" cy="545" r="4"></circle></g>
+          </svg>
+          <button class="node-card node-1" data-node-card="1" type="button" aria-label="Lihat detail Node 1">
+            <span class="node-card-head"><span class="node-title"><b>Node 1</b><small>· Pusat</small></span><span class="node-status unknown" id="node-status-1"><i></i>—</span></span>
+            <span class="node-port">:5001 <i>·</i> :6001 <i>·</i> :8001</span>
+            <span class="node-version"><small>VERSI GLOBAL</small><b id="version-1">v—</b></span>
+            <span class="node-stock-mini"><span class="mini-stock-heading">SKU TERATAS <small id="stock-count-1">0</small></span><span class="stock-list" id="stock-1"><span class="empty-stock">Menunggu data</span></span></span>
+            <span class="node-lock hidden" id="node-lock-1"></span>
+          </button>
+          <button class="node-card node-2" data-node-card="2" type="button" aria-label="Lihat detail Node 2">
+            <span class="node-card-head"><span class="node-title"><b>Node 2</b><small>· Cabang A</small></span><span class="node-status unknown" id="node-status-2"><i></i>—</span></span>
+            <span class="node-port">:5002 <i>·</i> :6002 <i>·</i> :8002</span>
+            <span class="node-version"><small>VERSI GLOBAL</small><b id="version-2">v—</b></span>
+            <span class="node-stock-mini"><span class="mini-stock-heading">SKU TERATAS <small id="stock-count-2">0</small></span><span class="stock-list" id="stock-2"><span class="empty-stock">Menunggu data</span></span></span>
+            <span class="node-lock hidden" id="node-lock-2"></span>
+          </button>
+          <button class="node-card node-3" data-node-card="3" type="button" aria-label="Lihat detail Node 3">
+            <span class="node-card-head"><span class="node-title"><b>Node 3</b><small>· Cabang B</small></span><span class="node-status unknown" id="node-status-3"><i></i>—</span></span>
+            <span class="node-port">:5003 <i>·</i> :6003 <i>·</i> :8003</span>
+            <span class="node-version"><small>VERSI GLOBAL</small><b id="version-3">v—</b></span>
+            <span class="node-stock-mini"><span class="mini-stock-heading">SKU TERATAS <small id="stock-count-3">0</small></span><span class="stock-list" id="stock-3"><span class="empty-stock">Menunggu data</span></span></span>
+            <span class="node-lock hidden" id="node-lock-3"></span>
+          </button>
+          <button class="node-card node-4" data-node-card="4" type="button" aria-label="Lihat detail Node 4">
+            <span class="node-card-head"><span class="node-title"><b>Node 4</b><small>· Replika</small></span><span class="node-status unknown" id="node-status-4"><i></i>—</span></span>
+            <span class="node-port">:5004 <i>·</i> :6004 <i>·</i> :8004</span>
+            <span class="node-version"><small>SNAPSHOT N1–3</small><b id="version-4">v—</b></span>
+            <span class="node-stock-mini"><span class="mini-stock-heading">SKU TERSALIN <small id="stock-count-4">0</small></span><span class="stock-list" id="stock-4"><span class="empty-stock">Menunggu replika</span></span></span>
+            <span class="node-lock hidden" id="node-lock-4"></span>
+          </button>
+          <div class="lineage-tooltip hidden" id="lineage-tooltip" role="status"><div class="tooltip-heading"><span class="tooltip-protocol">—</span><b>—</b></div><div class="tooltip-summary">—</div></div>
+        </div>
+        <div class="topology-footer"><span><i class="footer-status-dot"></i><b id="healthy-count">0</b>/4 node online</span><span>Refresh <b>2.5s</b></span><span id="active-gateway">Gateway :8001</span></div>
+      </section>
+
+      <aside class="workspace-panel right-panel" aria-label="Observability dan pengelolaan node">
+        <div class="section-heading"><div><span class="eyebrow">OBSERVABILITY</span><h2>Cluster tools</h2></div><span class="stream-badge"><i></i> LIVE</span></div>
+        <nav class="tab-list right-tabs" role="tablist" aria-label="Panel observability">
+          <button class="tab-button active" id="right-tab-log" role="tab" aria-selected="true" aria-controls="right-panel-log" data-tab-group="right-panel" data-tab="log">Log &amp; Lineage</button>
+          <button class="tab-button" id="right-tab-chaos" role="tab" aria-selected="false" aria-controls="right-panel-chaos" data-tab-group="right-panel" data-tab="chaos">Chaos &amp; Node</button>
+          <button class="tab-button" id="right-tab-replica" role="tab" aria-selected="false" aria-controls="right-panel-replica" data-tab-group="right-panel" data-tab="replica">Replika &amp; Info</button>
+        </nav>
+
+        <section class="tab-panel active log-tab-panel" id="right-panel-log" role="tabpanel" aria-labelledby="right-tab-log" data-panel-group="right-panel" data-panel="log">
+          <div class="log-toolbar"><span class="log-count" id="log-count">0 event</span><button class="text-button" id="clear-log-button" type="button">Bersihkan</button></div>
+          <label class="sr-only" for="log-filter">Filter protokol log</label>
+          <select id="log-filter" class="control control-small"><option value="all">Semua protokol</option><option>XML-RPC</option><option>Pyro5-RMI</option><option>FAILOVER</option><option>ROLLBACK</option><option>CHORD-DHT</option><option>MPI</option></select>
+          <div class="log-console" id="log-rows" aria-live="polite"><div class="log-empty-row">Belum ada aktivitas. Jalankan transaksi atau pencarian untuk melihat lineage.</div></div>
+        </section>
+
+        <section class="tab-panel" id="right-panel-chaos" role="tabpanel" aria-labelledby="right-tab-chaos" data-panel-group="right-panel" data-panel="chaos" hidden>
+          <div class="panel-intro compact-intro"><span class="icon-badge red">⌁</span><div><h3>Kontrol proses</h3><p>Matikan node untuk menguji deteksi heartbeat.</p></div></div>
+          <div class="control-list">
+            <div class="control-row" data-control-node="1"><span class="control-node-name"><i class="heartbeat-dot unknown" id="control-heart-1"></i><span><b>Node 1</b><small>Pusat</small></span></span><span class="control-buttons"><button class="mini-button toggle-node" data-node="1" type="button">Memuat…</button><button class="mini-button delay-node" data-node="1" type="button">Delay 4s</button></span></div>
+            <div class="control-row" data-control-node="2"><span class="control-node-name"><i class="heartbeat-dot unknown" id="control-heart-2"></i><span><b>Node 2</b><small>Cabang A</small></span></span><span class="control-buttons"><button class="mini-button toggle-node" data-node="2" type="button">Memuat…</button><button class="mini-button delay-node" data-node="2" type="button">Delay 4s</button></span></div>
+            <div class="control-row" data-control-node="3"><span class="control-node-name"><i class="heartbeat-dot unknown" id="control-heart-3"></i><span><b>Node 3</b><small>Cabang B</small></span></span><span class="control-buttons"><button class="mini-button toggle-node" data-node="3" type="button">Memuat…</button><button class="mini-button delay-node" data-node="3" type="button">Delay 4s</button></span></span></div>
+            <div class="control-row" data-control-node="4"><span class="control-node-name"><i class="heartbeat-dot unknown" id="control-heart-4"></i><span><b>Node 4</b><small>Replika</small></span></span><span class="control-buttons"><button class="mini-button toggle-node" data-node="4" type="button">Memuat…</button><button class="mini-button delay-node" data-node="4" type="button">Delay 4s</button></span></div>
+          </div>
+          <div class="callout"><span>i</span><span>Heartbeat menandai node mati setelah 3 kegagalan beruntun.</span></div>
+        </section>
+
+        <section class="tab-panel replica-tab-panel" id="right-panel-replica" role="tabpanel" aria-labelledby="right-tab-replica" data-panel-group="right-panel" data-panel="replica" hidden>
+          <div class="gateway-card"><span class="gateway-icon">⌘</span><span><small>GATEWAY AKTIF</small><b id="gateway-node-label">Node 1 · :8001</b></span><i class="gateway-pulse"></i></div>
+          <div class="replica-heading"><div><h3>Versi replika</h3><p>Primer dibanding snapshot Node 4</p></div><span class="mini-tag">NODE 4</span></div>
+          <div class="replica-table-wrap"><table class="replica-table"><thead><tr><th>Sumber</th><th>Primer</th><th>Replika</th><th></th></tr></thead><tbody id="replica-versions"><tr><td colspan="4" class="table-empty">Memuat versi…</td></tr></tbody></table></div>
+          <button class="button button-secondary full-width" id="sync-replica-button" type="button">Paksa Sinkron Ulang</button>
+          <div class="gateway-latency-caption">Latensi gateway <b id="gateway-latency">—</b></div>
+        </section>
+      </aside>
+    </main>
+
+    <section class="detail-drawer" id="node-detail" aria-live="polite" hidden>
+      <div class="detail-heading"><div><span class="eyebrow">NODE INVENTORY</span><h2 id="detail-title">Detail node</h2></div><button class="icon-button" id="close-detail" type="button" aria-label="Tutup detail">×</button></div>
+      <div class="detail-content" id="detail-content"></div>
+    </section>
+    <footer class="app-footer"><span>DistriPOS <b>v2.0</b> <i>·</i> Distributed Branch Inventory Engine</span><span>REST <i>·</i> XML-RPC <i>·</i> Pyro5-RMI <i>·</i> MPI</span></footer>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <div class="modal-backdrop hidden" id="mpi-modal" role="dialog" aria-modal="true" aria-labelledby="mpi-modal-title">
+    <section class="mpi-modal">
+      <header class="modal-header"><div><span class="eyebrow">PARALLEL COMPUTING · 4 RANKS</span><h2 id="mpi-modal-title">Ringkasan Audit MPI</h2></div><button class="icon-button" id="close-mpi-modal" type="button" aria-label="Tutup">×</button></header>
+      <div class="mpi-mode-row"><span class="audit-complete"><i></i> Audit selesai</span><span class="mini-tag" id="mpi-mode">MPI</span></div>
+      <div class="audit-metrics"><article><small>TOTAL VALUASI</small><b id="audit-valuation">—</b><span>nilai inventori nasional</span></article><article><small>STOK KRITIS</small><b id="audit-critical">—</b><span>SKU di bawah safety stock</span></article><article><small>SELISIH REPLIKA</small><b id="audit-discrepancy">—</b><span>perbedaan snapshot Node 4</span></article></div>
+      <div class="audit-section"><h3>Ringkasan nasional</h3><p id="audit-summary">Hasil audit akan ditampilkan di sini.</p></div>
+      <div class="audit-section"><h3>SKU prioritas audit</h3><div class="audit-table-wrap"><table class="audit-table"><thead><tr><th>Kode SKU</th><th>Total stok</th><th>Valuasi</th><th>Status</th><th>Turnover</th></tr></thead><tbody id="audit-sku-rows"><tr><td colspan="5" class="table-empty">Belum ada data.</td></tr></tbody></table></div></div>
+      <footer class="modal-footer"><span id="audit-ranks">4 ranks · Node 1–4</span><button class="button button-secondary" id="close-mpi-modal-bottom" type="button">Tutup</button></footer>
+    </section>
+  </div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+"""Analitik terdistribusi berbasis MPI."""

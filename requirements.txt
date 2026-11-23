@@ -1,0 +1,6 @@
+Flask
+flask-cors
+Pyro5
+mpi4py
+python-dotenv
+requests

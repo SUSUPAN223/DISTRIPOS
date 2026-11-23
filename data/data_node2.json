@@ -1,0 +1,31 @@
+{
+  "node_id": 2,
+  "versi_global": 2,
+  "updated_at": 1795411999.9334772,
+  "barang": {
+    "BRG001": {
+      "kode": "BRG001",
+      "nama": "Sosro",
+      "stok": 24,
+      "harga": 5000,
+      "min_stok": 15,
+      "updated_at": 1795411999.9334545
+    }
+  },
+  "riwayat_mutasi": [
+    {
+      "ts": 1795411612.2972088,
+      "kode": "BRG001",
+      "delta": 25,
+      "tipe": "restock",
+      "stok_akhir": 25
+    },
+    {
+      "ts": 1795411999.933464,
+      "kode": "BRG001",
+      "delta": -1,
+      "tipe": "penjualan",
+      "stok_akhir": 24
+    }
+  ]
+}

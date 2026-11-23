@@ -1,0 +1,39 @@
+{
+  "node_id": 4,
+  "updated_at": 1795411999.952687,
+  "replikasi": {
+    "1": {
+      "versi": 1,
+      "updated_at": 1795409613.9980266,
+      "barang": {
+        "BRG001": {
+          "kode": "BRG001",
+          "nama": "Sosro",
+          "stok": 0,
+          "harga": 5000,
+          "min_stok": 25,
+          "updated_at": 1795409613.9925146
+        }
+      }
+    },
+    "2": {
+      "versi": 2,
+      "updated_at": 1795411999.9526787,
+      "barang": {
+        "BRG001": {
+          "kode": "BRG001",
+          "nama": "Sosro",
+          "stok": 24,
+          "harga": 5000,
+          "min_stok": 15,
+          "updated_at": 1795411999.9334545
+        }
+      }
+    },
+    "3": {
+      "versi": 0,
+      "updated_at": 0.0,
+      "barang": {}
+    }
+  }
+}
