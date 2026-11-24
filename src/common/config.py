@@ -14,7 +14,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 RPC_BASE_PORT = int(os.getenv("RPC_BASE_PORT", "5000"))
 RMI_BASE_PORT = int(os.getenv("RMI_BASE_PORT", "6000"))
 API_BASE_PORT = int(os.getenv("API_BASE_PORT", "8000"))
-LAUNCHER_HOST = os.getenv("LAUNCHER_HOST", "127.0.0.1")
+BIND_HOST = os.getenv("BIND_HOST", "0.0.0.0")
+LAUNCHER_HOST = os.getenv("LAUNCHER_HOST", BIND_HOST)
 LAUNCHER_PORT = int(os.getenv("LAUNCHER_PORT", "8000"))
 
 RPC_TIMEOUT = 3.0
@@ -31,7 +32,7 @@ INT32_MAX = 2147483647
 TIDAK_IDEMPOTEN = {"tambah_barang", "ubah_stok", "hapus_barang", "transfer_stok"}
 
 HOSTS: Dict[int, str] = {
-    node_id: os.getenv(f"HOST_NODE{node_id}", "127.0.0.1")
+    node_id: os.getenv(f"HOST_NODE{node_id}", "localhost")
     for node_id in range(1, 5)
 }
 
@@ -44,6 +45,11 @@ def validasi_node_id(node_id: int) -> int:
 
 def host_node(node_id: int) -> str:
     return HOSTS[validasi_node_id(node_id)]
+
+
+def rmi_bind_host(node_id: int) -> str:
+    """Pyro advertises its bind address in object URIs; wildcard is not routable."""
+    return os.getenv(f"RMI_BIND_HOST_NODE{validasi_node_id(node_id)}", host_node(node_id))
 
 
 def port_rpc(node_id: int) -> int:

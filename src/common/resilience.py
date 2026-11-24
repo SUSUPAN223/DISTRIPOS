@@ -16,13 +16,9 @@ _READ_IDEMPOTENT = {
 
 
 def _timeout_errors() -> tuple[type[BaseException], ...]:
-    errors: list[type[BaseException]] = [TimeoutError, socket.timeout]
-    try:
-        import xmlrpc.client
-        errors.append(xmlrpc.client.ProtocolError)
-    except ImportError:
-        pass
-    return tuple(errors)
+    # ProtocolError is an HTTP response from the peer, not a connection
+    # timeout. It must never be retried as if the request were unreceived.
+    return (TimeoutError, socket.timeout)
 
 
 def _connection_errors() -> tuple[type[BaseException], ...]:

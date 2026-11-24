@@ -12,7 +12,7 @@ import Pyro5.api
 from werkzeug.serving import make_server
 
 from src.common.api import create_app
-from src.common.config import avtree, host_node, port_api, port_rmi, port_rpc
+from src.common.config import BIND_HOST, avtree, port_api, port_rmi, port_rpc, rmi_bind_host
 from src.common.core import StokStore
 from src.common.heartbeat import HeartbeatMonitor
 from src.common.logger import status_node
@@ -23,7 +23,8 @@ from src.common.rpc_server import RPCNodeServer
 class NodeRuntime:
     def __init__(self, node_id: int, host: Optional[str] = None) -> None:
         self.node_id = node_id
-        self.host = host or host_node(node_id)
+        self.host = host or BIND_HOST
+        self.rmi_host = rmi_bind_host(node_id)
         self.stop_event = threading.Event()
         self.rpc_server: Optional[RPCNodeServer] = None
         self.pyro_daemon: Optional[Pyro5.api.Daemon] = None
@@ -35,7 +36,7 @@ class NodeRuntime:
         self.recovery_thread: Optional[threading.Thread] = None
 
     def _start_pyro(self) -> None:
-        self.pyro_daemon = Pyro5.api.Daemon(host=self.host, port=port_rmi(self.node_id))
+        self.pyro_daemon = Pyro5.api.Daemon(host=self.rmi_host, port=port_rmi(self.node_id))
         if self.node_id == 1:
             objects: dict[str, Any] = {"LockManager": get_lockmanager(1)}
         elif self.node_id in (2, 3):
@@ -117,7 +118,8 @@ class NodeRuntime:
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--node", type=int, required=True, choices=(1, 2, 3, 4))
-    parser.add_argument("--host", default=None)
+    parser.add_argument("--host", default=BIND_HOST,
+                        help="alamat bind REST/XML-RPC; Pyro memakai RMI_BIND_HOST_N")
     args = parser.parse_args(argv)
     runtime = NodeRuntime(args.node, args.host)
     for sig in (signal.SIGINT, signal.SIGTERM):

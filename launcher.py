@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import time
+from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -15,6 +16,9 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 ROOT = Path(__file__).resolve().parent
+load_dotenv(ROOT / ".env")
+BIND_HOST = os.getenv("BIND_HOST", "0.0.0.0")
+LAUNCHER_BIND_HOST = os.getenv("LAUNCHER_HOST", BIND_HOST)
 DASHBOARD = ROOT / "dashboard"
 app = Flask("distripos-launcher", static_folder=None)
 CORS(app)
@@ -56,7 +60,14 @@ def launcher_status():
                 "status": "running" if process and code is None else "stopped",
                 "pid": process.pid if process and code is None else None,
                 "returncode": code}
-        return jsonify({"ok": True, "nodes": result})
+        request_host = request.host.split(":", 1)[0]
+        return jsonify({"ok": True, "nodes": result,
+                        "api_nodes": {str(n): {"host": (request_host
+                                                         if os.getenv(f"HOST_NODE{n}", "localhost").lower() == "localhost"
+                                                         or os.getenv(f"HOST_NODE{n}", "localhost") in {"127.0.0.1", "::1"}
+                                                         else os.getenv(f"HOST_NODE{n}")),
+                                               "port": int(os.getenv("API_BASE_PORT", "8000")) + n}
+                                      for n in range(1, 5)}})
 
 
 def _start_node(node: int) -> tuple[dict[str, Any], int]:
@@ -146,7 +157,7 @@ def _shutdown_children() -> None:
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--auto-start", action="store_true", help="mulai Node 1..4 saat launcher aktif")
-    parser.add_argument("--host", default=os.getenv("LAUNCHER_HOST", "127.0.0.1"))
+    parser.add_argument("--host", default=LAUNCHER_BIND_HOST)
     parser.add_argument("--port", type=int, default=int(os.getenv("LAUNCHER_PORT", "8000")))
     args = parser.parse_args(argv)
     if args.auto_start:

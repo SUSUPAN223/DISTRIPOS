@@ -17,9 +17,10 @@
   };
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  const requestId = () => globalThis.crypto?.randomUUID?.() || `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const state = {
     launcherNodes: {}, heartbeat: {}, versions: {}, replica: {}, stocks: {}, gatewayNode: 1,
-    polling: false, pollQueued: false, animationQueue: Promise.resolve(), logCount: 0,
+    polling: false, pollQueued: false, animationQueue: Promise.resolve(), logCount: 0, apiNodes: {},
     activeLocks: new Map(), logEntries: [],
     activeTimers: new Set()
   };
@@ -57,6 +58,10 @@
     return {body, status: response.status, headers: response.headers};
   }
 
+  function isNetworkFailure(error) {
+    return !error?.status && !error?.payload;
+  }
+
   function launcherFetch(path, options = {}) { return requestJson(`${LAUNCHER_BASE}${path}`, options); }
 
   function candidateNodes(preferredNode = 1) {
@@ -71,12 +76,19 @@
     return [...alive, ...uncertain, ...order.filter((node) => !alive.includes(node) && !uncertain.includes(node))];
   }
 
+  function nodeBase(node) {
+    const configured = state.apiNodes[String(node)];
+    const host = configured?.host || location.hostname;
+    const port = Number(configured?.port || 8000 + Number(node));
+    return `${location.protocol}//${host}:${port}`;
+  }
+
   /** Select a live REST gateway while preserving the requested operation/query unchanged. */
   async function apiFetch(path, options = {}, preferredNode = 1) {
     const failures = [];
     for (const node of candidateNodes(preferredNode)) {
       try {
-        const result = await requestJson(`${NODE_BASE(node)}${path}`, options);
+        const result = await requestJson(`${nodeBase(node)}${path}`, options);
         state.gatewayNode = node;
         updateGatewayIndicator(node);
         if (node !== Number(preferredNode)) {
@@ -88,11 +100,13 @@
         return result;
       } catch (error) {
         failures.push({node, error});
-        if (error.status && error.status < 500 && error.status !== 408 && error.status !== 429) throw error;
+        // A JSON HTTP response (including 502 rollback) proves that a server
+        // received the request. Never replay it through another gateway.
+        if (!isNetworkFailure(error)) throw error;
       }
     }
     const last = failures[failures.length - 1]?.error;
-    throw new Error(last ? `Semua gateway node tidak tersedia. ${last.message}` : "Tidak ada gateway node yang tersedia.");
+    throw new Error(last ? `Semua gateway node tidak dapat dihubungi. ${last.message}` : "Tidak ada gateway node yang tersedia.");
   }
 
   function updateGatewayIndicator(node) {
@@ -451,16 +465,17 @@
     const started = performance.now();
     try {
       const launcherPromise = launcherFetch("/launcher/status").then((result) => result.body).catch(() => null);
+      const launcherData = await launcherPromise;
+      if (launcherData?.nodes) state.launcherNodes = launcherData.nodes;
+      if (launcherData?.api_nodes) state.apiNodes = launcherData.api_nodes;
       const candidates = candidateNodes(1);
       let statusResult = null; let statusNode = candidates[0] || 1;
       const failures = [];
       for (const node of candidates) {
-        try { statusResult = await requestJson(`${NODE_BASE(node)}/status`); statusNode = node; state.gatewayNode = node; break; }
+        try { statusResult = await requestJson(`${nodeBase(node)}/status`); statusNode = node; state.gatewayNode = node; break; }
         catch (error) { failures.push(error); }
       }
       if (!statusResult) throw failures.at(-1) || new Error("Status API tidak tersedia");
-      const launcherData = await launcherPromise;
-      if (launcherData?.nodes) state.launcherNodes = launcherData.nodes;
       const statusData = statusResult.body?.data || {};
       state.heartbeat = parseNodeStatus(statusData);
       const versions = statusData.versi_global || {};
@@ -468,11 +483,11 @@
 
       // Fetch cluster snapshots concurrently; rendering never waits for an active animation queue.
       const stockRequests = [1, 2, 3].map(async (node) => {
-        try { return {node, result: await requestJson(`${NODE_BASE(statusNode)}/barang?node=${node}`)}; }
+        try { return {node, result: await requestJson(`${nodeBase(statusNode)}/barang?node=${node}`)}; }
         catch (error) { return {node, error}; }
       });
-      const lockRequest = requestJson(`${NODE_BASE(statusNode)}/lock`).catch((error) => ({error}));
-      const replicaRequest = requestJson(`${NODE_BASE(statusNode)}/replika`).catch((error) => ({error}));
+      const lockRequest = requestJson(`${nodeBase(statusNode)}/lock`).catch((error) => ({error}));
+      const replicaRequest = requestJson(`${nodeBase(statusNode)}/replika`).catch((error) => ({error}));
       const [stocks, lockResult, replicaResult] = await Promise.all([Promise.all(stockRequests), lockRequest, replicaRequest]);
       for (const entry of stocks) {
         if (entry.result) {
@@ -504,10 +519,11 @@
     const node = Number($("#inventory-node").value);
     const code = $("#inventory-code").value.trim();
     try {
-      if (!code || !Number.isInteger(quantity) || quantity === 0) throw new Error("Pilih SKU dan jumlah stok bukan nol.");
+      if (!code || !Number.isInteger(quantity) || quantity === 0 || Math.abs(quantity) > 2147483647 || node === 4)
+        throw new Error(node === 4 ? "Node 4 adalah replika; pilih Node 1–3 untuk mutasi." : "Pilih SKU dan jumlah int32 bukan nol.");
       $("#inventory-quantity").value = String(quantity);
       const result = await apiFetch(`/barang/${encodeURIComponent(code)}/stok?node=${node}`, {
-        method: "PUT", body: JSON.stringify({jumlah: quantity, tipe: quantity < 0 ? "penjualan" : "restock"})
+        method: "PUT", body: JSON.stringify({jumlah: quantity, tipe: quantity < 0 ? "penjualan" : "restock", request_id: requestId()})
       }, node);
       consumeResponse(result);
       toast(quantity < 0 ? `Penjualan berhasil: ${code}, ${Math.abs(quantity)} unit terjual.` : `Restock berhasil: ${code}, ${quantity} unit ditambahkan.`, "success");
@@ -529,7 +545,7 @@
       if (!code || !name) throw new Error("Kode SKU dan nama barang wajib diisi.");
       const result = await apiFetch(`/barang?node=${node}`, {method: "POST", body: JSON.stringify({
         kode: code, nama: name, stok: Number($("#manage-initial-stock").value || 0),
-        harga: Number($("#inventory-price").value || 50000), min_stok: Number($("#inventory-min").value || 15)
+        harga: Number($("#inventory-price").value || 50000), min_stok: Number($("#inventory-min").value || 15), request_id: requestId()
       })}, node);
       consumeResponse(result);
       $("#inventory-code").value = code;
@@ -550,7 +566,7 @@
     if (!window.confirm(`Hapus SKU ${code} dari Node ${node}?`)) return;
     const restore = setBusy(button, true, "Menghapus…");
     try {
-      const result = await apiFetch(`/barang/${encodeURIComponent(code)}?node=${node}`, {method: "DELETE"}, node);
+      const result = await apiFetch(`/barang/${encodeURIComponent(code)}?node=${node}&request_id=${encodeURIComponent(requestId())}`, {method: "DELETE"}, node);
       consumeResponse(result);
       toast(`SKU ${code} berhasil dihapus dari Node ${node}.`, "success");
       await pollCluster();
@@ -567,7 +583,7 @@
     const source = Number($("#transfer-source").value); const target = Number($("#transfer-target").value);
     try {
       if (source === target) throw new Error("Cabang asal dan tujuan harus berbeda.");
-      const body = {kode: $("#transfer-code").value.trim(), jumlah: Number($("#transfer-quantity").value), dari: source, ke: target, simulasi_gagal: $("#simulate-failure").checked};
+      const body = {kode: $("#transfer-code").value.trim(), jumlah: Number($("#transfer-quantity").value), dari: source, ke: target, simulasi_gagal: $("#simulate-failure").checked, request_id: requestId()};
       if (!body.kode || !Number.isInteger(body.jumlah) || body.jumlah <= 0) throw new Error("Kode SKU dan jumlah positif wajib diisi.");
       const result = await apiFetch("/transfer", {method: "POST", body: JSON.stringify(body)}, source);
       consumeResponse(result);
@@ -576,7 +592,7 @@
     } catch (error) {
       if (error.payload?.trace) await playTraceAnimation(error.payload.trace);
       const rolledBack = error.payload?.trace?.some((step) => step.protokol === "ROLLBACK" || /rollback/i.test(step.aksi || ""));
-      toast(rolledBack ? `Transfer gagal, stok asal ${$("#transfer-code").value.trim()} telah dipulihkan otomatis.` : `Transfer gagal: ${error.message}`, rolledBack ? "warning" : "error");
+      toast(`Transfer gagal: ${error.message}${rolledBack ? ` (stok asal ${$("#transfer-code").value.trim()} telah dipulihkan otomatis)` : ""}`, rolledBack ? "warning" : "error");
       if (rolledBack) toast("Distributed lock dilepas setelah kompensasi stok.", "warning");
     } finally { restore(); }
   }

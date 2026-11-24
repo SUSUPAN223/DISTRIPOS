@@ -1,7 +1,186 @@
 {
   "node_id": 3,
-  "versi_global": 0,
-  "updated_at": 0.0,
-  "barang": {},
-  "riwayat_mutasi": []
+  "versi_global": 23,
+  "updated_at": 1795482904.3382394,
+  "barang": {
+    "BRG002": {
+      "kode": "BRG002",
+      "nama": "Minerale",
+      "stok": 50,
+      "harga": 7000,
+      "min_stok": 2,
+      "updated_at": 1795412921.4080153
+    },
+    "BRG001": {
+      "kode": "BRG001",
+      "nama": "Sosro",
+      "stok": 2,
+      "harga": 5000,
+      "min_stok": 15,
+      "updated_at": 1795482904.3382194
+    }
+  },
+  "riwayat_mutasi": [
+    {
+      "ts": 1795412846.7618628,
+      "kode": "BRG002",
+      "delta": 50,
+      "tipe": "restock",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412874.7922869,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412874.8241165,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412874.8876684,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412874.8926091,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412874.9323606,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412874.938125,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412874.9655728,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412874.994799,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412921.2474434,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412921.26522,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412921.3001773,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412921.3058133,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412921.3596246,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412921.3754294,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795412921.4034228,
+      "kode": "BRG002",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 48
+    },
+    {
+      "ts": 1795412921.408018,
+      "kode": "BRG002",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 50
+    },
+    {
+      "ts": 1795450684.4802258,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "restock",
+      "stok_akhir": 2
+    },
+    {
+      "ts": 1795450712.2055893,
+      "kode": "BRG001",
+      "delta": 1,
+      "tipe": "transfer_masuk",
+      "stok_akhir": 3
+    },
+    {
+      "ts": 1795450726.5849996,
+      "kode": "BRG001",
+      "delta": -1,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 2
+    },
+    {
+      "ts": 1795453160.7862332,
+      "kode": "BRG001",
+      "delta": 1,
+      "tipe": "transfer_masuk",
+      "stok_akhir": 3
+    },
+    {
+      "ts": 1795453655.3040476,
+      "kode": "BRG001",
+      "delta": 1,
+      "tipe": "transfer_masuk",
+      "stok_akhir": 4
+    },
+    {
+      "ts": 1795482904.3382342,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "audit_compensasi",
+      "stok_akhir": 2
+    }
+  ]
 }

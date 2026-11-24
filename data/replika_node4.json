@@ -1,10 +1,10 @@
 {
   "node_id": 4,
-  "updated_at": 1795411999.952687,
+  "updated_at": 1795482904.3487172,
   "replikasi": {
     "1": {
-      "versi": 1,
-      "updated_at": 1795409613.9980266,
+      "versi": 2,
+      "updated_at": 1795450767.8192174,
       "barang": {
         "BRG001": {
           "kode": "BRG001",
@@ -13,27 +13,52 @@
           "harga": 5000,
           "min_stok": 25,
           "updated_at": 1795409613.9925146
+        },
+        "BRG002": {
+          "kode": "BRG002",
+          "nama": "Minerale",
+          "stok": 50,
+          "harga": 7000,
+          "min_stok": 2,
+          "updated_at": 1795450767.7989616
         }
       }
     },
     "2": {
-      "versi": 2,
-      "updated_at": 1795411999.9526787,
+      "versi": 50,
+      "updated_at": 1795482904.3196537,
       "barang": {
         "BRG001": {
           "kode": "BRG001",
           "nama": "Sosro",
-          "stok": 24,
+          "stok": 22,
           "harga": 5000,
           "min_stok": 15,
-          "updated_at": 1795411999.9334545
+          "updated_at": 1795482904.3135548
         }
       }
     },
     "3": {
-      "versi": 0,
-      "updated_at": 0.0,
-      "barang": {}
+      "versi": 23,
+      "updated_at": 1795482904.3487093,
+      "barang": {
+        "BRG002": {
+          "kode": "BRG002",
+          "nama": "Minerale",
+          "stok": 50,
+          "harga": 7000,
+          "min_stok": 2,
+          "updated_at": 1795412921.4080153
+        },
+        "BRG001": {
+          "kode": "BRG001",
+          "nama": "Sosro",
+          "stok": 2,
+          "harga": 5000,
+          "min_stok": 15,
+          "updated_at": 1795482904.3382194
+        }
+      }
     }
   }
 }

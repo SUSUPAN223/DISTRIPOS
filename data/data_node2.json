@@ -1,15 +1,15 @@
 {
   "node_id": 2,
-  "versi_global": 2,
-  "updated_at": 1795411999.9334772,
+  "versi_global": 50,
+  "updated_at": 1795482904.313586,
   "barang": {
     "BRG001": {
       "kode": "BRG001",
       "nama": "Sosro",
-      "stok": 24,
+      "stok": 22,
       "harga": 5000,
       "min_stok": 15,
-      "updated_at": 1795411999.9334545
+      "updated_at": 1795482904.3135548
     }
   },
   "riwayat_mutasi": [
@@ -26,6 +26,342 @@
       "delta": -1,
       "tipe": "penjualan",
       "stok_akhir": 24
+    },
+    {
+      "ts": 1795412741.33882,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412741.3567233,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412741.4079156,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412741.4135141,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412741.51996,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412741.5250413,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412741.6395996,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412741.6711068,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412761.3950524,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412761.39943,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412761.458231,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412761.4625158,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412761.5514126,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412761.5665715,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412761.6124105,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412761.6270218,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412766.0107205,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412766.0350218,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412766.066816,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412766.072279,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412766.107093,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412766.1106274,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412766.1429446,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412766.147377,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412779.112653,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412779.1160934,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412779.17543,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412779.1793823,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412779.2382202,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412779.2417386,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412779.3162253,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412779.3191717,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412855.3441408,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412855.3755658,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412855.439054,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412855.4689817,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412855.4905462,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412855.5156693,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795412855.5933537,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795412855.624164,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 24
+    },
+    {
+      "ts": 1795450684.4746728,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795450695.9753058,
+      "kode": "BRG001",
+      "delta": -2,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 20
+    },
+    {
+      "ts": 1795450695.979674,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "rollback",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795450712.2013822,
+      "kode": "BRG001",
+      "delta": -1,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 21
+    },
+    {
+      "ts": 1795450726.6143603,
+      "kode": "BRG001",
+      "delta": 1,
+      "tipe": "transfer_masuk",
+      "stok_akhir": 22
+    },
+    {
+      "ts": 1795453160.7826226,
+      "kode": "BRG001",
+      "delta": -1,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 21
+    },
+    {
+      "ts": 1795453655.2783995,
+      "kode": "BRG001",
+      "delta": -1,
+      "tipe": "transfer_keluar",
+      "stok_akhir": 20
+    },
+    {
+      "ts": 1795482904.3135762,
+      "kode": "BRG001",
+      "delta": 2,
+      "tipe": "audit_compensasi",
+      "stok_akhir": 22
     }
   ]
 }

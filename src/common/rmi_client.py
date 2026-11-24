@@ -29,9 +29,16 @@ def panggil_rmi(pemanggil: int, tujuan: int, nama_objek: str, method: str,
     trace = buat_trace(pemanggil, tujuan, "Pyro5-RMI", method, f"objek={nama_objek}")
     try:
         with Pyro5.api.Proxy(uri) as proxy:
-            proxy._pyroTimeout = RPC_TIMEOUT
+            # A branch transfer may wait for the primary lock and then fail
+            # over to the backup lock manager. Give this bounded transaction
+            # enough time to return its rollback/error trace; keep ordinary
+            # RPC/RMI calls on the 3-second timeout contract.
+            call_timeout = (2 * LOCK_WAIT_TIMEOUT + RPC_TIMEOUT + 2
+                            if nama_objek == "Cabang" and method == "transfer_stok"
+                            else RPC_TIMEOUT)
+            proxy._pyroTimeout = call_timeout
             result = panggil_dengan_retry(getattr(proxy, method), *args, method=method,
-                                          timeout=RPC_TIMEOUT, **kwargs)
+                                          timeout=call_timeout, **kwargs)
     except PyroError as exc:
         raise ConnectionError(str(exc)) from exc
     panggilan("Pyro5-RMI", method, pemanggil, tujuan, "ok")

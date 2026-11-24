@@ -32,7 +32,7 @@ Buat konfigurasi lokal dari template:
 Copy-Item .env.example .env
 ```
 
-Nilai bawaan memakai `127.0.0.1`, cocok untuk satu komputer. Port default:
+Template memakai `localhost` untuk target node dan cocok untuk satu komputer. Port default:
 
 | Layanan | Port |
 |---|---:|
@@ -41,7 +41,45 @@ Nilai bawaan memakai `127.0.0.1`, cocok untuk satu komputer. Port default:
 | XML-RPC Node 1–4 | `5001–5004` |
 | Pyro5 RMI Node 1–4 | `6001–6004` |
 
-Untuk beberapa komputer, sesuaikan `HOST_NODE1` sampai `HOST_NODE4` di `.env` dan pastikan port tersebut dibuka di firewall.
+`BIND_HOST` mengatur interface listener REST/XML-RPC (default `0.0.0.0`). `HOST_NODE1` sampai `HOST_NODE4` adalah alamat target routable; Pyro mengiklankan alamat ini sebagai URI (opsional `RMI_BIND_HOST_NODEn` untuk override interface lokal Pyro). Untuk satu PC gunakan `localhost` pada semua `HOST_NODE*`. Untuk beberapa PC isi tiap nilai dengan IP/DNS mesin node terkait. Browser klien juga harus dapat menjangkau port REST `API_BASE_PORT+1` sampai `API_BASE_PORT+4`. Bind launcher (`LAUNCHER_HOST=0.0.0.0`) hanya pada jaringan tepercaya dan batasi firewall karena endpoint launcher mengendalikan proses.
+
+## Mode Command Prompt (CLI)
+
+CLI berkomunikasi dengan REST API yang sama dengan Dashboard; semua mutasi memakai request ID, trace ditampilkan di terminal, dan kegagalan koneksi saja yang memicu failover. Respons HTTP 4xx/5xx (termasuk 502 rollback) tidak diulang.
+
+```powershell
+# Menu interaktif bergaya operasi bernomor
+python cli.py
+
+# Atau perintah langsung (contoh)
+python cli.py list --node 2
+python cli.py get SKU001 --node 2
+python cli.py add SKU999 "Produk Contoh" 25 --harga 15000 --min-stok 5 --node 2
+python cli.py stock SKU999 -2 --tipe kasir --node 2
+python cli.py transfer 2 3 SKU999 2 --simulasi-gagal
+python cli.py dht SKU999
+python cli.py status
+python cli.py lock
+python cli.py replica
+python cli.py seed
+python cli.py sync
+python cli.py delay 2 4
+python cli.py delay 2 0
+python cli.py mpi
+```
+
+## Mode satu komputer
+
+Salin `.env.example` menjadi `.env` (nilai default `HOST_NODE1..4=localhost`), aktifkan virtualenv, lalu:
+
+```powershell
+python launcher.py --auto-start
+# Buka http://localhost:8000 untuk Dashboard; CLI berjalan di terminal lain.
+```
+
+## Mode beberapa komputer
+
+Semua node harus memakai port yang disepakati dan `.env` pada setiap mesin harus memetakan `HOST_NODE1..4` ke IP/DNS yang routable. `BIND_HOST=0.0.0.0` pada mesin node; `HOST_NODE*` bukan alamat bind, melainkan alamat panggilan/iklan. Jalankan satu perintah `python run_node.py --node N --host 0.0.0.0` di masing-masing mesin yang bertanggung jawab atas node N; `run_node.py` standalone mem-bind Pyro ke `RMI_BIND_HOST_N` (yang default-nya `HOST_NODEn`). Launcher tidak memulai proses di PC remote: jalankan `python launcher.py` pada mesin dashboard/koordinator (atau `python launcher.py --auto-start` hanya bila node berjalan pada mesin yang sama), lalu buka `http://IP-LAUNCHER:8000`. Jalankan `python cli.py` pada mesin klien dengan `.env` yang berisi pemetaan target node yang sama. Buka firewall secara terbatas untuk TCP 5001–5004, 6001–6004, 8000–8004. Jangan mengekspos launcher ke Internet/jaringan tak tepercaya.
 
 Pemeriksaan sintaks opsional:
 
@@ -57,10 +95,10 @@ Di terminal project dengan environment aktif, jalankan:
 python launcher.py --auto-start
 ```
 
-Biarkan terminal tersebut tetap terbuka. Launcher di `http://127.0.0.1:8000` akan menyalakan Node 1–4. Buka dashboard di browser:
+Biarkan terminal tersebut tetap terbuka. Launcher di `http://localhost:8000` akan menyalakan Node 1–4. Buka dashboard di browser:
 
 ```text
-http://127.0.0.1:8000/
+http://localhost:8000/
 ```
 
 Periksa status proses dari terminal PowerShell kedua:

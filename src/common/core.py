@@ -254,12 +254,21 @@ class StokStore:
                 return copy.deepcopy(self._request_results[request_id])
             if kode in self.barang:
                 raise StokError(f"Barang dengan kode {kode!r} sudah ada", 409)
+            old_updated = self.updated_at
+            old_history = copy.deepcopy(self.riwayat_mutasi)
             now = float(time.time())
             self.barang[kode] = {"kode": kode, "nama": nama, "stok": stok,
                                  "harga": harga, "min_stok": min_stok, "updated_at": now}
             self.cache.invalidate(kode)
             self._catat_mutasi_locked(kode, stok, "restock", stok)
-            self._commit_versi_locked("tambah_barang")
+            try:
+                self._commit_versi_locked("tambah_barang")
+            except Exception:
+                self.barang.pop(kode, None)
+                self.updated_at = old_updated
+                self.riwayat_mutasi = old_history
+                self.cache.invalidate(kode)
+                raise
             result = copy.deepcopy(self.barang[kode])
             if request_id:
                 self._request_results[request_id] = copy.deepcopy(result)
@@ -274,6 +283,8 @@ class StokStore:
     ) -> Dict[str, Any]:
         kode = self._validasi_teks("kode", kode)
         jumlah = self._validasi_int32("jumlah", jumlah)
+        if jumlah == 0:
+            raise StokError("jumlah perubahan stok tidak boleh nol", 400)
         tipe = self._validasi_teks("tipe", tipe)
         with self.lock:
             if request_id and request_id in self._request_results:
@@ -286,6 +297,8 @@ class StokStore:
             if stok_baru < 0:
                 raise StokError("Stok tidak boleh negatif", 422)
             lama = copy.deepcopy(item)
+            old_updated = self.updated_at
+            old_history = copy.deepcopy(self.riwayat_mutasi)
             try:
                 now = float(time.time())
                 item["stok"] = stok_baru
@@ -295,6 +308,8 @@ class StokStore:
                 self._commit_versi_locked("ubah_stok")
             except Exception:
                 self.barang[kode] = lama
+                self.updated_at = old_updated
+                self.riwayat_mutasi = old_history
                 self.cache.invalidate(kode)
                 raise
             result = copy.deepcopy(item)
@@ -311,12 +326,16 @@ class StokStore:
             if item is None:
                 raise StokError(f"Barang dengan kode {kode!r} tidak ditemukan", 404)
             removed = copy.deepcopy(item)
+            old_updated = self.updated_at
+            old_history = copy.deepcopy(self.riwayat_mutasi)
             del self.barang[kode]
             self.cache.invalidate(kode)
             try:
                 self._commit_versi_locked("hapus_barang")
             except Exception:
                 self.barang[kode] = removed
+                self.updated_at = old_updated
+                self.riwayat_mutasi = old_history
                 raise
             if request_id:
                 self._request_results[request_id] = {"kode": kode, "dihapus": True}
@@ -340,8 +359,15 @@ class StokStore:
         for item in data:
             if not isinstance(item, dict):
                 raise StokError("Setiap item seed harus berupa objek", 400)
+            kode = self._validasi_teks("kode", item.get("kode"))
+            # Seeding is repeatable: keep existing branch inventory unchanged.
+            with self.lock:
+                existing = self.barang.get(kode)
+                if existing is not None:
+                    results.append(copy.deepcopy(existing))
+                    continue
             results.append(self.tambah_barang(
-                item.get("kode"), item.get("nama"), item.get("stok"),
+                kode, item.get("nama"), item.get("stok"),
                 item.get("harga", 50000), item.get("min_stok", 15),
                 request_id=f"seed:{self.node_id}:{item.get('kode')}"))
         return results

@@ -17,8 +17,13 @@ DEFAULT_PARAMS = {"harga_acuan": 50000, "rasio_safety_stock": 1.25}
 def _read_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
-    with path.open("r", encoding="utf-8") as stream:
-        data = json.load(stream)
+    try:
+        with path.open("r", encoding="utf-8") as stream:
+            data = json.load(stream)
+    except (OSError, json.JSONDecodeError):
+        # An absent/empty/corrupt node document contributes an empty snapshot;
+        # other nodes remain auditable rather than crashing the entire job.
+        return {}
     return data if isinstance(data, dict) else {}
 
 
@@ -31,6 +36,8 @@ def _load_cluster_data(data_dir: Path) -> tuple[list[dict[str, Any]], dict[str, 
     for sku in keys:
         item_source = next((doc.get("barang", {}).get(sku) for doc in node_docs.values()
                             if sku in doc.get("barang", {})), {})
+        if not isinstance(item_source, dict):
+            item_source = {}
         sku_branch_stocks = {node: int(node_docs[node].get("barang", {}).get(sku, {}).get("stok", 0))
                              for node in (1, 2, 3)}
         total_stock = sum(sku_branch_stocks.values())
@@ -132,8 +139,8 @@ def _run_mpi() -> None:
     size = comm.Get_size()
     if size != 4:
         if rank == 0:
-            print(json.dumps({"ok": False, "error": "MPI harus dijalankan dengan tepat 4 rank"}))
-        return
+            print(json.dumps({"ok": False, "error": "MPI harus dijalankan dengan tepat 4 rank"}), flush=True)
+        raise ValueError("MPI harus dijalankan dengan tepat 4 rank")
 
     # Bcast: rank 0 menyiapkan parameter audit, semua rank menerima parameter.
     params = dict(DEFAULT_PARAMS) if rank == 0 else None
@@ -211,6 +218,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     try:
         _run_mpi()
         return 0
+    except ValueError as exc:
+        print(json.dumps({"ok": False, "error": str(exc)}, separators=(",", ":")), flush=True)
+        return 2
     except ImportError as exc:
         print(json.dumps({"ok": False, "error": f"mpi4py tidak tersedia: {exc}"}))
         return 2

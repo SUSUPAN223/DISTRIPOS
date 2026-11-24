@@ -8,13 +8,14 @@ import secrets
 import tempfile
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import Pyro5.api
 
 from .config import (LEASE_DEFAULT, LOCK_WAIT_TIMEOUT, PROJECT_ROOT, RPC_TIMEOUT,
-                     avtree, host_node, port_rmi)
+                     avtree, host_node, port_rmi, rmi_bind_host)
 from .core import StokError, StokStore
 from .logger import buat_trace, panggilan
 
@@ -108,6 +109,7 @@ class Cabang:
         self.jumlah_transfer = 0
         self.riwayat_transfer: list[Dict[str, Any]] = []
         self._lock = threading.RLock()
+        self._transfer_lock = threading.RLock()
 
     def info(self) -> Dict[str, Any]:
         with self._lock:
@@ -117,7 +119,7 @@ class Cabang:
                     "versi_global": self.store.versi_global}
 
     def transfer_stok(self, kode: str, jumlah: int, ke_node: int, delay: float = 0.0,
-                      simulasi_gagal: bool = False) -> Dict[str, Any]:
+                      simulasi_gagal: bool = False, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if isinstance(jumlah, bool) or not isinstance(jumlah, int) or jumlah <= 0:
             raise StokError("jumlah transfer harus integer positif", 400)
         if ke_node not in (2, 3) or ke_node == self.node_id:
@@ -128,6 +130,16 @@ class Cabang:
         if isinstance(simulasi_gagal, bool) is False:
             return {"ok": False, "error": "simulasi_gagal harus boolean",
                     "kode_http": 400, "trace": []}
+        if metadata is not None and not isinstance(metadata, dict):
+            return {"ok": False, "error": "metadata barang harus berupa object",
+                    "kode_http": 400, "trace": []}
+
+        try:
+            source_item = self.store.get_stok(kode)
+        except StokError as exc:
+            return {"ok": False, "error": exc.pesan, "kode_http": exc.kode_http, "trace": []}
+        # Metadata always comes from the authoritative source, never from UI input.
+        metadata = {key: source_item[key] for key in ("nama", "harga", "min_stok")}
 
         pemegang = f"node-{self.node_id}:{secrets.token_hex(8)}"
         trace: list[Dict[str, Any]] = []
@@ -136,7 +148,10 @@ class Cabang:
         lock_acquired = False
         debit_sukses = False
         lock_uri_called = False
-        transfer_id = secrets.token_hex(12)
+        primary_acquire_uncertain = False
+        transfer_id = str(uuid.uuid4())
+        failure: Optional[StokError] = None
+        self._transfer_lock.acquire()
         try:
             try:
                 lock_uri_called = True
@@ -147,6 +162,7 @@ class Cabang:
                 trace.append(buat_trace(self.node_id, 1, "Pyro5-RMI", "acquire_lock",
                                         f"kode={kode} lease={LEASE_DEFAULT}"))
             except Exception as primary_error:
+                primary_acquire_uncertain = True
                 lock_node = 4
                 lock_result = _rmi_call(4, "LockManager", "acquire", kode, pemegang,
                                         LEASE_DEFAULT, LOCK_WAIT_TIMEOUT)
@@ -157,30 +173,46 @@ class Cabang:
                                         f"kode={kode} lease={LEASE_DEFAULT}"))
                 lock_acquired = True
 
-            self.store.ubah_stok(kode, -jumlah, tipe="transfer_keluar",
-                                 request_id=f"transfer:{transfer_id}:debit")
+            # Serialize branch-side transfers and debit under the store's own
+            # lock so a concurrent cashier operation cannot invalidate the
+            # sufficient-stock check between validation and debit.
+            with self.store.lock:
+                source_now = self.store.barang.get(kode)
+                if source_now is None:
+                    raise StokError(f"Barang dengan kode {kode!r} tidak ditemukan", 404)
+                if source_now["stok"] < jumlah:
+                    raise StokError("Stok tidak cukup untuk transfer", 422)
+                self.store.ubah_stok(kode, -jumlah, tipe="transfer_keluar",
+                                     request_id=f"transfer:{transfer_id}:debit")
             debit_sukses = True
             trace.append(buat_trace(self.node_id, self.node_id, "Pyro5-RMI", "transfer_debit",
                                     f"kode={kode} jumlah={jumlah}"))
+            if simulasi_gagal or delay > RPC_TIMEOUT:
+                if delay > 0 and not simulasi_gagal:
+                    time.sleep(min(float(delay), RPC_TIMEOUT + 0.1))
+                raise TimeoutError("RPC tujuan gagal/timeout sesuai fault injection")
+            if delay:
+                time.sleep(float(delay))
+            from .rpc_client import panggil_rpc
+            from .rpc_client import RemoteCallError
             try:
-                if simulasi_gagal or delay > RPC_TIMEOUT:
-                    if delay > 0:
-                        time.sleep(min(float(delay), RPC_TIMEOUT + 0.1))
-                    raise TimeoutError("RPC tujuan gagal/timeout sesuai fault injection")
-                if delay:
-                    time.sleep(float(delay))
-                from .rpc_client import panggil_rpc
                 rpc_result = panggil_rpc(self.node_id, ke_node, "ubah_stok", kode, jumlah,
                                          "transfer_masuk", f"transfer:{transfer_id}:kredit")
-                trace.extend(rpc_result.get("trace", []))
-                trace.append(buat_trace(self.node_id, ke_node, "Pyro5-RMI", "transfer_kredit",
-                                        f"kode={kode} jumlah={jumlah}"))
-            except Exception as destination_error:
-                self.store.ubah_stok(kode, jumlah, tipe="rollback",
-                                     request_id=f"transfer:{transfer_id}:rollback")
-                trace.append(buat_trace(self.node_id, self.node_id, "ROLLBACK", "auto_rollback",
-                                        f"kode={kode} jumlah={jumlah}; tujuan_error={destination_error}"))
-                raise StokError(f"Transfer gagal; stok sumber telah di-rollback: {destination_error}", 502)
+            except RemoteCallError as destination_error:
+                if destination_error.kode_http != 404 or not metadata:
+                    raise
+                # Only transfers may create a destination SKU. The prior debit
+                # has already checked source availability under the branch lock.
+                destination_item = self.store.get_stok(kode)
+                transfer_item = {**destination_item, **metadata, "kode": kode, "stok": jumlah}
+                rpc_result = panggil_rpc(self.node_id, ke_node, "tambah_barang", kode,
+                    transfer_item["nama"], jumlah, transfer_item["harga"], transfer_item["min_stok"],
+                    f"transfer:{transfer_id}:upsert")
+                trace.append(buat_trace(self.node_id, ke_node, "Pyro5-RMI", "transfer_upsert_sku",
+                                        f"kode={kode} metadata diwariskan dari Node {self.node_id}"))
+            trace.extend(rpc_result.get("trace", []))
+            trace.append(buat_trace(self.node_id, ke_node, "Pyro5-RMI", "transfer_kredit",
+                                    f"kode={kode} jumlah={jumlah}"))
 
             with self._lock:
                 self.jumlah_transfer += 1
@@ -188,14 +220,22 @@ class Cabang:
                     "kode": kode, "jumlah": jumlah, "ke_node": ke_node, "status": "sukses"})
             return {"ok": True, "transfer_id": transfer_id, "dari_node": self.node_id,
                     "ke_node": ke_node, "kode": kode, "jumlah": jumlah, "trace": trace}
-        except StokError as exc:
-            # Return an explicit envelope: Pyro serializers do not guarantee
-            # preservation of custom exception attributes such as trace.
-            return {"ok": False, "error": exc.pesan,
-                    "kode_http": exc.kode_http, "trace": trace}
         except Exception as exc:
-            return {"ok": False, "error": f"Transfer gagal: {exc}",
-                    "kode_http": 502, "trace": trace}
+            code = exc.kode_http if isinstance(exc, StokError) else 502
+            # A debit may have committed before any later failure (including
+            # metadata/target errors). Always compensate before releasing lock.
+            if debit_sukses:
+                try:
+                    self.store.ubah_stok(kode, jumlah, tipe="rollback",
+                                         request_id=f"transfer:{transfer_id}:rollback")
+                    trace.append(buat_trace(self.node_id, self.node_id, "ROLLBACK", "auto_rollback",
+                                            f"kode={kode} jumlah={jumlah}; error={exc}"))
+                except Exception as rollback_error:
+                    trace.append(buat_trace(self.node_id, self.node_id, "ROLLBACK", "rollback_gagal",
+                                            f"kode={kode}; error={rollback_error}", "error"))
+                    exc = RuntimeError(f"{exc}; rollback gagal: {rollback_error}")
+                    code = 500
+            failure = StokError(str(exc), code)
         finally:
             if lock_acquired:
                 try:
@@ -208,7 +248,7 @@ class Cabang:
                 # Bila acquire utama sampai ke server tetapi responsnya timeout,
                 # token tak diketahui; release berdasarkan owner membebaskan
                 # lock yang mungkin berhasil dibuat di Node 1.
-                if lock_node == 4 and lock_uri_called:
+                if primary_acquire_uncertain:
                     try:
                         _rmi_call(1, "LockManager", "release", kode, pemegang, None)
                     except Exception:
@@ -216,11 +256,14 @@ class Cabang:
             else:
                 trace.append(buat_trace(self.node_id, lock_node, "Pyro5-RMI", "release_lock",
                                         f"kode={kode}; lock tidak diakuisisi", "error"))
-            if debit_sukses:
+            if debit_sukses and failure is not None:
                 with self._lock:
                     if not any(x.get("transfer_id") == transfer_id for x in self.riwayat_transfer):
                         self.riwayat_transfer.append({"transfer_id": transfer_id, "ts": time.time(),
                             "kode": kode, "jumlah": jumlah, "ke_node": ke_node, "status": "gagal_rollback"})
+            self._transfer_lock.release()
+        if failure is not None:
+            return {"ok": False, "error": failure.pesan, "kode_http": failure.kode_http, "trace": trace}
 
 
 @Pyro5.api.expose
@@ -342,7 +385,13 @@ def _rmi_call(node_id: int, object_name: str, method: str, *args: Any, **kwargs:
     from .resilience import panggil_dengan_retry
     uri = _uri(node_id, object_name)
     with Pyro5.api.Proxy(uri) as proxy:
-        proxy._pyroTimeout = RPC_TIMEOUT
+        # Transfers can spend up to LOCK_WAIT_TIMEOUT acquiring the primary
+        # lock and then another bounded wait on the backup after failover.
+        # CRUD RPC remains at 3s; the stateful transfer call must outlive its
+        # documented lock wait or the client times out before rollback/trace.
+        proxy._pyroTimeout = (2 * LOCK_WAIT_TIMEOUT + RPC_TIMEOUT + 2
+                              if object_name == "Cabang" and method == "transfer_stok"
+                              else RPC_TIMEOUT)
         result = panggil_dengan_retry(getattr(proxy, method), *args, method=method, **kwargs)
     panggilan("Pyro5-RMI", method, node_id, node_id, "ok")
     return result
@@ -369,7 +418,7 @@ def get_replika(node_id: int = 4) -> Replika:
 
 def jalankan_rmi_server(node_id: int, objects: Optional[Dict[str, Any]] = None) -> None:
     """Expose objek node pada daemon Pyro5 port 600N."""
-    daemon = Pyro5.api.Daemon(host=host_node(node_id), port=port_rmi(node_id))
+    daemon = Pyro5.api.Daemon(host=rmi_bind_host(node_id), port=port_rmi(node_id))
     if objects is None:
         if node_id == 1:
             objects = {"LockManager": get_lockmanager(1)}

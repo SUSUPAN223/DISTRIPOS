@@ -85,9 +85,12 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
         except Exception as primary_error:
             fail_trace = buat_trace(node_id, 4, "FAILOVER", "read_failover_replika",
                                     f"node={target} method={method}; error={primary_error}", "error")
-            replica = panggil_rmi(node_id, 4, "Replika", "salinan", target)
+            try:
+                replica = panggil_rmi(node_id, 4, "Replika", "salinan", target)
+            except Exception as replica_error:
+                raise StokError(f"Node {target} tidak tersedia dan replika tidak dapat dibaca: {replica_error}", 503) from replica_error
             snapshot = replica["data"]
-            trace = [*fail_trace, *replica["trace"]]
+            trace = [fail_trace, *replica["trace"]]
             if method == "get_stok":
                 item = snapshot.get("barang", {}).get(args[0])
                 if item is None:
@@ -139,6 +142,8 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
         body = request.get_json(silent=True) or {}
         try:
             target = node_arg()
+            if target == 4:
+                raise StokError("Node 4 adalah replika; operasi tulis harus ditujukan ke Node 1–3", 400)
             if not all(k in body for k in ("kode", "nama", "stok")):
                 raise StokError("kode, nama, stok wajib diisi", 400)
             result = rpc_call(target, "tambah_barang", body["kode"], body["nama"], body["stok"],
@@ -161,8 +166,12 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
         body = request.get_json(silent=True) or {}
         try:
             target = node_arg()
+            if target == 4:
+                raise StokError("Node 4 adalah replika; operasi tulis harus ditujukan ke Node 1–3", 400)
             if "jumlah" not in body:
                 raise StokError("jumlah wajib diisi", 400)
+            if body["jumlah"] == 0:
+                raise StokError("jumlah perubahan stok tidak boleh nol", 400)
             result = rpc_call(target, "ubah_stok", kode, body["jumlah"], body.get("tipe", "kasir"),
                               body.get("request_id"))
             trace = list(result["trace"])
@@ -176,6 +185,8 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
     def hapus_barang(kode: str):
         try:
             target = node_arg()
+            if target == 4:
+                raise StokError("Node 4 adalah replika; operasi tulis harus ditujukan ke Node 1–3", 400)
             result = rpc_call(target, "hapus_barang", kode, request.args.get("request_id"))
             trace = list(result["trace"])
             trace.append(buat_trace(target, 4, "XML-RPC", "push_replikasi",
@@ -204,9 +215,10 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
                 raise StokError("dari dan ke harus cabang berbeda (2/3)", 400)
             if not all(k in body for k in ("kode", "jumlah")):
                 raise StokError("kode dan jumlah wajib diisi", 400)
+            metadata = {key: body[key] for key in ("nama", "harga", "min_stok") if key in body}
             result = panggil_rmi(node_id, src, "Cabang", "transfer_stok", body["kode"],
                                  body["jumlah"], dst, body.get("delay", 0.0),
-                                 body.get("simulasi_gagal", False))
+                                 body.get("simulasi_gagal", False), metadata)
             transfer_result = result["data"]
             operation_trace = list(result.get("trace", []))
             if isinstance(transfer_result, dict) and isinstance(transfer_result.get("trace"), list):
@@ -223,6 +235,9 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
                             trace=operation_trace)
         except Exception as exc:
             trace = getattr(exc, "trace", [])
+            if isinstance(exc, StokError):
+                return error_response(exc, source if isinstance(source, int) and source in range(1, 5) else node_id,
+                                      via="RMI", trace=trace)
             return error_response(exc, source if isinstance(source, int) and source in range(1, 5) else node_id,
                                   via="RMI", trace=trace)
 
@@ -299,6 +314,9 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
         versions: Dict[str, Any] = {}
         traces = []
         for n in (1, 2, 3):
+            if heartbeat_data.get(n, {}).get("status") == "mati":
+                versions[str(n)] = None
+                continue
             try:
                 result = rpc_call(n, n, "versi")
                 versions[str(n)] = result["data"].get("versi_global")
@@ -346,12 +364,9 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
         data = body.get("barang")
         traces = []
         result_by_node = {}
-        active_nodes = []
-        try:
-            active_nodes = [int(item["node_id"]) for item in avtree.cabang_aktif()]
-        except Exception:
-            active_nodes = [1, 2, 3]
-        active_nodes = sorted(set([1, *[n for n in active_nodes if n in (2, 3)]]))
+        # Try all primary nodes: AVTree state is process-local, so one REST
+        # process cannot reliably infer health reported by another process.
+        active_nodes = [1, 2, 3]
         for n in active_nodes:
             try:
                 result = rpc_call(n, "seed_data_awal", data)
@@ -374,6 +389,12 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
             result_by_node["replika"] = {"status": "gagal", "error": str(exc)}
         failures = [k for k, value in result_by_node.items()
                     if isinstance(value, dict) and value.get("status") == "gagal"]
+        for source in (1, 2, 3):
+            outcome = result_by_node.get(str(source), {})
+            if outcome.get("status") == "ok":
+                push_trace = buat_trace(source, 4, "XML-RPC", "push_replikasi", "seed snapshot")
+                if push_trace not in traces:
+                    traces.append(push_trace)
         return response(not failures, result_by_node, via="RPC -> RMI (failover ke Replika)",
                         tujuan=4, trace=traces, status=207 if failures else 200,
                         error={"message": "Sebagian proses seed gagal", "nodes": failures} if failures else None)
@@ -391,12 +412,22 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
                 item = rpc_call(owner, owner, "get_stok", kode)
                 data_item = item["data"]
                 trace = [*lookup["trace"], *item["trace"]]
+                if data_item is None:
+                    data_item = None
             except Exception:
-                replica = panggil_rmi(node_id, 4, "Replika", "salinan", owner)
-                data_item = replica["data"].get("barang", {}).get(kode)
-                trace = [*lookup["trace"], buat_trace(owner, 4, "FAILOVER", "dht_read_failover",
-                                                       f"kode={kode}", "error"), *replica["trace"]]
-            return response(True, {"node_pemilik": owner, "finger_hops": lookup["hops"],
+                fail_trace = buat_trace(owner, 4, "FAILOVER", "dht_read_failover", f"kode={kode}", "error")
+                try:
+                    replica = panggil_rmi(node_id, 4, "Replika", "salinan", owner)
+                    data_item = replica["data"].get("barang", {}).get(kode)
+                    trace = [*lookup["trace"], fail_trace, *replica["trace"]]
+                except Exception as replica_error:
+                    # Routing result remains useful even if owner and replica
+                    # are unavailable: return a clean miss plus diagnostic trace.
+                    data_item = None
+                    trace = [*lookup["trace"], fail_trace,
+                             buat_trace(owner, 4, "FAILOVER", "dht_replica_unavailable",
+                                        str(replica_error), "error")]
+            return response(True, {"node_pemilik": owner, "finger_hops": lookup["hops"], "hops": lookup["hops"],
                                    "barang": data_item, "key_id": lookup["key_id"]},
                             via="CHORD-DHT", tujuan=owner, trace=trace)
         except Exception as exc:
@@ -425,7 +456,12 @@ def create_app(node_id: int = 1, heartbeat_monitor: Optional[HeartbeatMonitor] =
                 output = proc.stdout
                 mode = "mpiexec" if mpiexec else "fallback_simulasi"
             # mpiexec may produce diagnostics on stderr; parse final nonempty stdout JSON line.
-            parsed = json.loads([line for line in output.splitlines() if line.strip()][-1])
+            lines = [line for line in output.splitlines() if line.strip()]
+            if not lines:
+                raise RuntimeError(proc.stderr or "MPI tidak menghasilkan output JSON")
+            parsed = json.loads(lines[-1])
+            if not isinstance(parsed, dict):
+                raise RuntimeError("Output MPI harus berupa objek JSON")
             if "ok" in parsed and parsed["ok"] is False:
                 raise RuntimeError(parsed.get("error", "MPI gagal"))
             parsed["mode"] = mode

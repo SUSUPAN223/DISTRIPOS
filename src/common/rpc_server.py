@@ -9,7 +9,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional
 from xmlrpc.server import SimpleXMLRPCServer
 
-from .config import RPC_TIMEOUT, avtree, host_node, port_rpc
+from .config import BIND_HOST, RPC_TIMEOUT, avtree, host_node, port_rpc
 from .core import StokError, StokStore
 from .logger import buat_trace, panggilan
 
@@ -177,7 +177,7 @@ class RPCNodeServer:
     def __init__(self, node_id: int, host: Optional[str] = None,
                  store: Optional[StokStore] = None) -> None:
         self.node_id = node_id
-        self.host = host or host_node(node_id)
+        self.host = host or BIND_HOST
         self.port = port_rpc(node_id)
         self.service = NodeRPCService(node_id, store)
         self.server = _ThreadedXMLRPCServer(

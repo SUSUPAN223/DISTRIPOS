@@ -1,7 +1,7 @@
 {
   "node_id": 1,
-  "versi_global": 1,
-  "updated_at": 1795409613.9927075,
+  "versi_global": 2,
+  "updated_at": 1795450767.7989826,
   "barang": {
     "BRG001": {
       "kode": "BRG001",
@@ -10,6 +10,14 @@
       "harga": 5000,
       "min_stok": 25,
       "updated_at": 1795409613.9925146
+    },
+    "BRG002": {
+      "kode": "BRG002",
+      "nama": "Minerale",
+      "stok": 50,
+      "harga": 7000,
+      "min_stok": 2,
+      "updated_at": 1795450767.7989616
     }
   },
   "riwayat_mutasi": [
@@ -19,6 +27,13 @@
       "delta": 0,
       "tipe": "restock",
       "stok_akhir": 0
+    },
+    {
+      "ts": 1795450767.7989764,
+      "kode": "BRG002",
+      "delta": 50,
+      "tipe": "restock",
+      "stok_akhir": 50
     }
   ]
 }
