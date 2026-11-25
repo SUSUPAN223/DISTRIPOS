@@ -1,6 +1,6 @@
 {
   "node_id": 4,
-  "updated_at": 1795482904.3487172,
+  "updated_at": 1795587539.7516854,
   "replikasi": {
     "1": {
       "versi": 2,
@@ -25,8 +25,8 @@
       }
     },
     "2": {
-      "versi": 50,
-      "updated_at": 1795482904.3196537,
+      "versi": 52,
+      "updated_at": 1795587539.7516704,
       "barang": {
         "BRG001": {
           "kode": "BRG001",
@@ -34,7 +34,7 @@
           "stok": 22,
           "harga": 5000,
           "min_stok": 15,
-          "updated_at": 1795482904.3135548
+          "updated_at": 1795587539.740672
         }
       }
     },
